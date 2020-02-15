@@ -1,0 +1,6 @@
+Over 1000000 iterations there is a(n) 50% confidence of completing in 53.2 days.
+Over 1000000 iterations there is a(n) 80% confidence of completing in 57.0 days.
+Over 1000000 iterations there is a(n) 90% confidence of completing in 58.7 days.
+Over 1000000 iterations there is a(n) 95% confidence of completing in 60.0 days.
+Over 1000000 iterations there is a(n) 99% confidence of completing in 61.9 days.
+Over 1000000 iterations there is a(n) 99.9% confidence of completing in 63.3 days.

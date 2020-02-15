@@ -1,0 +1,2 @@
+    Finished dev [unoptimized + debuginfo] target(s) in 0.14s
+     Running `target\debug\monte_carlo.exe -f C:\Users\bhancox\Documents\rust\monte_carlo\test_file.txt -s | -i 1000000`

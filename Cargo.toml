@@ -1,0 +1,12 @@
+[package]
+name = "monte_carlo"
+version = "0.1.0"
+authors = ["B Hancox <me@bhancox.com>"]
+edition = "2018"
+description = "This is a very simple Project Management Monte Carlo simulator. It uses PERT estimating and a number of iterations to produce an order vector of estimates for all tasks"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.7"
+structopt = "0.3"
