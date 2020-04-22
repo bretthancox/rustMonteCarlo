@@ -1,3 +1,7 @@
+mod pert;
+mod montecarlo;
+mod risktype;
+mod filehandler;
 use rand::{thread_rng, Rng};
 use std::{
     fs::File,
@@ -52,188 +56,16 @@ fn get_args() -> Opt {
     opt
 }
 
-
-
-///////////////////////////////////////////////////
-///// PERT type ///////////////////////////////////
-///////////////////////////////////////////////////
-
-#[derive(Debug)]
-pub struct PertValues {
-    name:               String,//&'static str,
-    optimistic:         f32,
-    most_likely:        f32,
-    pessimistic:        f32,
-    pert_estimate:      f32,
-    pm_standard_dev:    f32,
-    range_upper:        f32,
-    range_lower:        f32,
-}
-
-impl PartialEq for PertValues {
-    /*Without implementing PartialEq, could not compare
-    names between different nodes*/
-    fn eq(&self, comparator: &Self) -> bool {
-        self.name == comparator.name
-        &&
-        self.optimistic == comparator.optimistic
-        &&
-        self.most_likely == comparator.most_likely
-        &&
-        self.pessimistic == comparator.pessimistic
-    }
-}
-
-impl PertValues {
-    fn new(nom: String, opti: f32, most: f32, pes: f32) -> Self {
-        let pert_estimate = (opti + (4.0 * most) + pes) / 6.0;
-        let pm_std_dev = (pes - opti) / 6.0;
-
-        Self {
-            name:               nom,
-            optimistic:         opti,
-            most_likely:        most,
-            pessimistic:        pes,
-            pert_estimate:      pert_estimate,
-            pm_standard_dev:    pm_std_dev,
-            range_upper:        pert_estimate + pm_std_dev,
-            range_lower:        pert_estimate - pm_std_dev,
-        }
-    }
-}
-
-////////////////////////////////////////////////////
-///// Monte Carlo type /////////////////////////////
-////////////////////////////////////////////////////
-
-#[derive(Debug)]
-pub struct MonteCarlo {
-    perts:          Vec<PertValues>,
-    iterations:     usize,
-    estimates:      Vec<f32>,
-}
-
-impl MonteCarlo {
-    fn new(its: usize) -> Self {
-        Self {
-            iterations:     its,
-            perts:          Vec::with_capacity(its),
-            estimates:      Vec::with_capacity(its),
-        }
-    }
-
-    fn single_estimate(&self, lower: f32, upper: f32) -> f32 {
-        /* Produces a single estimate within the bounds of a lower and upper value */
-        let mut rng = thread_rng();
-        let estimate = rng.gen_range(lower, upper);
-        estimate
-    }
-
-    fn single_iteration(&mut self) {
-        /* For a single pass through all tasks/projects, produce a sequential estimate total
-           and add it to the estimates vector in the MonteCarlo type. */
-        let mut estimate_sum = 0.0;
-        for perts in &self.perts {
-            estimate_sum += self.single_estimate(perts.range_lower, perts.range_upper)
-        }
-        self.estimates.push(estimate_sum);
-    }
-
-    fn iterate(&mut self) {
-        /* For the iterations in the MonteCarlo type, perform a full task estimate. Sort the
-           estimates vector from smallest to largest. */
-        for _x in 0..self.iterations {
-            self.single_iteration();
-        }
-        self.estimates.sort_by(|a, b| a.partial_cmp(b).expect("Problem unwrapping estimates in fn iterate"));
-    }
-
-    fn print_confidence(&self, confidence: f32) {
-        /* Print the estimate found at the confidence number supplied, where 
-           the confidence is an integer. Should allow a float? */
-        let single_percent: f32 = (self.iterations / 100) as f32;
-
-        let index_float: f32 = single_percent * confidence;
-
-        let conf_result: f32 = self.estimates[index_float.round() as usize];
-
-        println!("Over {} iterations there is a(n) {}% confidence of completing in {:.1} days.", self.iterations, confidence, conf_result);
-    }
-}
-
-/////////////////////////////////////////////////////
-///// File reading //////////////////////////////////
-/////////////////////////////////////////////////////
-
-fn file_open(filename: PathBuf) -> Result<String, io::Error> {
-    /*let day: Opt = get_args();
-    let filename = format!{"{}/{}", INPUT_DIR, day.day};*/
-    let mut ret = String::new();
-
-    //println!("{:?}", filename);
-
-    if let Ok(file) = File::open(filename) {
-        let mut buf = BufReader::new(file);
-        buf.read_to_string(&mut ret)?;
-        Ok(ret)
-    } else {
-        Err(io::Error::new(InvalidData, "File not found"))
-    }
-}
-
-/////////////////////////////////////////////////////
-///// String handlers ///////////////////////////////
-/////////////////////////////////////////////////////
-
-fn splitter(input_str: String, split_point: &str) -> Vec<String> {
-    let vec_out: Vec<String> = input_str.split(split_point).map(|s| String::from(s.trim())).collect();
-    vec_out
-}
-
-
-fn prep_strings_level_one(filename: PathBuf) -> Result<Vec<String>, io::Error> {
-    match file_open(filename) {
-        Ok(content) => {
-            //println!("{}", content);
-            let output = splitter(content, "\n");
-            //println!("{:?}", output);
-            Ok(output)
-        },
-        Err(e) => {
-            println!("Error: {}", e);
-            Err(e)
-        },
-    }
-}
-
-
-fn prep_strings_level_two(filename: PathBuf, ocol: usize, mcol: usize, wcol: usize, ncol: usize, sep: &str, its: usize) -> Result<MonteCarlo, io::Error> {
-    let vec_of_strings = prep_strings_level_one(filename)?;
-
-    let mut monty_karlo = MonteCarlo::new(its);
-
-    for string_input in vec_of_strings {
-        let row = splitter(string_input, sep);
-        let name = String::from(&row[ncol - 1]);
-        let opp = f32::from_str(&row[ocol - 1]).expect("Failed on opp");
-        let most = f32::from_str(&row[mcol - 1]).expect("Failed on most");
-        let wor = f32::from_str(&row[wcol - 1]).expect("Failed on wor");
-        let inner_pert = PertValues::new(name, opp, most, wor);
-        monty_karlo.perts.push(inner_pert);
-    }
-
-    Ok(monty_karlo)
-}
-
 /////////////////////////////////////////////////////
 ///// Main //////////////////////////////////////////
 /////////////////////////////////////////////////////
 
 
 fn main() {
+    println!("MAIN");
     let arguments: Opt = get_args();
 
-    //println!("{:?}", &arguments);
+    println!("{:?}", &arguments);
 
     let most =              arguments.most;
     let opti =              arguments.optimistic;
@@ -243,16 +75,29 @@ fn main() {
     let iterations =        arguments.iterations;
     let confidence_levels = vec![50.0, 80.0, 90.0, 95.0, 99.0, 99.9];
 
-
-    if let Ok(mut monty) = prep_strings_level_two(arguments.file, opti, most, worst, name, &sep, iterations) {
-        monty.iterate();
-        for conf in confidence_levels {
-            monty.print_confidence(conf);
+    if let Ok(mut monty) = filehandler::prep_strings_level_two(arguments.file, opti, most, worst, name, &sep, iterations) {
+        monty.iterate("pert");
+        for conf in &confidence_levels {
+            monty.print_confidence(*conf, "pert");
         }
     } else {
         println!("Errored!!");
     }
 
+    let risk_1 = risktype::RiskValues::new(String::from("Risk 1"), String::from("Likely"), String::from("Severe"), 10_000.0, 22_000.0, 43_000.0);
+    let risk_2 = risktype::RiskValues::new(String::from("Risk 2"), String::from("Unlikely"), String::from("Severe"), 18_000.0, 27_000.0, 65_000.0);
+    let risk_3 = risktype::RiskValues::new(String::from("Risk 3"), String::from("Unlikely"), String::from("Severe"), 108_000.0, 130_000.0, 190_000.0);
+
+    let mut risky_carlo = montecarlo::MonteCarlo::new(10_000);
+    risky_carlo.risks.push(risk_1);
+    risky_carlo.risks.push(risk_2);
+    risky_carlo.risks.push(risk_3);
+    risky_carlo.iterate("risk");
+    for conf in confidence_levels {
+        risky_carlo.print_confidence(conf, "risk");
+    }
+
+    //println!("{:?}", risky_carlo.estimates);
     /*
     println!("{}", mem::size_of::<f32>());
     println!("{}", mem::size_of::<usize>());
@@ -274,8 +119,8 @@ mod tests {
 
     #[test]
     fn test_pert() {
-        let test_pert = PertValues::new(String::from("Bertie"), 4.5, 7.8, 15.0);
-        let comparator = PertValues {
+        let test_pert = pert::PertValues::new(String::from("Bertie"), 4.5, 7.8, 15.0);
+        let comparator = pert::PertValues {
             name:               String::from("Bertie"),
             optimistic:         4.5,
             most_likely:        7.8,
@@ -287,7 +132,6 @@ mod tests {
         };
         assert_eq!(test_pert, comparator);  
     }
-
 
     /*let test_pert = PertValues::new("Bertie", 4.5, 7.8, 15.0);
     let test_pert_2 = PertValues::new("Joanie", 7.0, 14.3, 28.9);
